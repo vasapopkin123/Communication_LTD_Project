@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>שחזור גישה</title>
+    <style>
+        body { font-family: Arial; background: #2c3e50; color: white; display: flex; justify-content: center; padding-top: 50px; }
+        .card { background: #34495e; padding: 20px; border-radius: 10px; width: 350px; }
+        input { width: 90%; padding: 10px; margin: 10px 0; border-radius: 5px; border: none; }
+        button { width: 100%; padding: 10px; background: #e67e22; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>שחזור גישה</h2>
+        <input type="text" id="user" placeholder="שם משתמש">
+        <input type="email" id="email" placeholder="אימייל איתו נרשמת">
+        <button onclick="getToken()">קבל קוד אימות</button>
+        <div id="tokenDisplay" style="margin-top:10px; word-break: break-all; color: #f1c40f;"></div>
+        <hr>
+        <input type="text" id="inputToken" placeholder="הזן קוד SHA1">
+        <button onclick="verifyToken()" style="background: #9b59b6;">המשך לשינוי סיסמה</button>
+        <br><br><a href="index.html" style="color:white">חזרה</a>
+    </div>
+
+    <script>
+        let serverToken = "";
+        async function getToken() {
+            const user = document.getElementById('user').value;
+            const email = document.getElementById('email').value;
+            const res = await fetch(`http://localhost:5000/forgot-password?username=${user}&email=${email}`, {method:'POST'});
+            const data = await res.json();
+            if (res.ok) {
+                serverToken = data.sha1_token;
+                document.getElementById('tokenDisplay').innerText = "קוד שנשלח: " + serverToken;
+            } else { alert(data.detail); }
+        }
+        function verifyToken() {
+            if (document.getElementById('inputToken').value === serverToken && serverToken !== "") {
+                window.location.href = `change_password.html?user=${document.getElementById('user').value}`;
+            } else { alert("קוד שגוי"); }
+        }
+    </script>
+</body>
+</html>

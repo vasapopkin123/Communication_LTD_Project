@@ -1,0 +1,36 @@
+version: "3.9"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: my_mysql_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: my_app_db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+    ports:
+      - "3306:3306"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: my_backend_app
+    ports:
+      - "5000:5000"
+    environment:
+      DATABASE_URL: mysql+mysqlconnector://user:password@mysql:3306/my_app_db
+    depends_on:
+      - mysql
+    volumes:
+      - ./backend:/app
+
+  frontend:
+    image: nginx:alpine
+    container_name: my_frontend_app
+    ports:
+      - "3000:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html

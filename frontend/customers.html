@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>רשימת לקוחות - Communication_LTD</title>
+    <style>
+        body { font-family: Arial; background: #f4f7f6; padding: 30px; text-align: center; }
+        table { width: 80%; margin: 20px auto; border-collapse: collapse; background: white; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
+        th { background: #2c3e50; color: white; }
+        tr:nth-child(even) { background: #f2f2f2; }
+        .back-btn { padding: 10px 20px; background: #7f8c8d; color: white; text-decoration: none; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>רשימת לקוחות מאובטחת</h1>
+    <table id="custTable">
+        <thead>
+            <tr>
+                <th>מזהה</th>
+                <th>שם הלקוח</th>
+                <th>נרשם על ידי (משתמש)</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+    <br>
+    <a href="system.html" class="back-btn">חזרה להוספה</a>
+
+    <script>
+        async function loadCustomers() {
+            const res = await fetch('http://localhost:5000/get-customers');
+            const data = await res.json();
+            const tbody = document.querySelector("#custTable tbody");
+            tbody.innerHTML = "";
+            data.forEach(c => {
+                tbody.innerHTML += `<tr><td>${c.id}</td><td>${c.full_name}</td><td>${c.registered_by}</td></tr>`;
+            });
+        }
+        loadCustomers();
+    </script>
+</body>
+</html>
