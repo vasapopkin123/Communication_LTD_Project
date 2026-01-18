@@ -1,66 +1,121 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <title>Communication_LTD - ניהול לקוחות</title>
-    <style>
-        body { font-family: Arial, sans-serif; background: #f4f7f6; margin: 0; padding: 0; }
-        .navbar { background: #2c3e50; color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
-        .container { max-width: 800px; margin: 30px auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; }
-        h1 { color: #2c3e50; }
-        .form-group { margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 20px; }
-        input { padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 250px; }
-        button { padding: 10px 20px; background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        .nav-buttons a { color: white; text-decoration: none; margin-right: 15px; background: #34495e; padding: 8px 12px; border-radius: 4px; }
-        #welcomeMessage { margin-top: 20px; font-weight: bold; color: #27ae60; }
-        .btn-view { background: #3498db; margin-top: 15px; }
-    </style>
+  <meta charset="UTF-8">
+  <title>Communication_LTD - פאנל ניהול</title>
+  <style>
+    body { font-family: Arial; background: #f4f7f6; margin: 0; }
+    .navbar { background: #2c3e50; color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
+    .nav-buttons a { color: white; text-decoration: none; padding: 10px 14px; background: #34495e; border-radius: 6px; margin-left: 10px; }
+    .container { padding: 30px; text-align: center; }
+    .form-group { background: white; padding: 20px; border-radius: 10px; width: 420px; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    input { width: 90%; padding: 12px; margin: 10px 0; border-radius: 6px; border: 1px solid #ccc; }
+    button { width: 100%; padding: 12px; background: #27ae60; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
+    button:hover { background: #1e8449; }
+    .btn-view { background: #3498db; margin-top: 15px; }
+    .btn-view:hover { background: #2d80b8; }
+    #welcomeMessage { margin-top: 12px; color: #27ae60; }
+    #loggedInAs { margin: 10px 0 20px; }
+  </style>
 </head>
 <body>
 
 <div class="navbar">
-    <div>Communication_LTD - פאנל ניהול</div>
-    <div class="nav-buttons">
-        <a id="changePassBtn" href="#">⚙️ שינוי סיסמה</a>
-        <a href="index.html" style="background:#e74c3c;">יציאה</a>
-    </div>
+  <div>Communication_LTD - פאנל ניהול</div>
+  <div class="nav-buttons">
+    <a id="changePassBtn" href="change_password.html">⚙️ שינוי סיסמה</a>
+    <a href="#" onclick="logout()" style="background:#e74c3c;">יציאה</a>
+  </div>
 </div>
 
 <div class="container">
-    <h1>ניהול לקוחות</h1>
-    <p id="loggedInAs"></p>
-    <div class="form-group">
-        <h3>הוספת לקוח חדש</h3>
-        <input type="text" id="custName" placeholder="שם מלא של הלקוח">
-        <button onclick="addCust()">הוסף למערכת</button>
-        <div id="welcomeMessage"></div>
-    </div>
-    
-    <button class="btn-view" onclick="window.location.href='customers.html'">📂 צפה ברשימת כל הלקוחות</button>
+  <h1>ניהול לקוחות</h1>
+  <p id="loggedInAs"></p>
+
+  <div class="form-group">
+    <h3>הוספת לקוח חדש</h3>
+    <input type="text" id="firstName" placeholder="שם פרטי">
+    <input type="text" id="lastName" placeholder="שם משפחה">
+    <button onclick="addCust()">הוסף למערכת</button>
+    <div id="welcomeMessage"></div>
+  </div>
+
+  <button class="btn-view" onclick="window.location.href='customers.html'">📂 צפה ברשימת כל הלקוחות</button>
 </div>
 
 <script>
-    // שליפת שם המשתמש מה-URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const currentUser = urlParams.get('user') || "אורח";
-    document.getElementById('loggedInAs').innerText = "מחובר כרגע: " + currentUser;
+  function authToken() {
+    return localStorage.getItem("auth_token");
+  }
 
-    // עדכון קישור שינוי סיסמה שיעביר את שם המשתמש
-    document.getElementById('changePassBtn').href = "change_password.html?user=" + currentUser;
+  function authHeaders() {
+    return {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + authToken()
+    };
+  }
 
-    async function addCust() {
-        const name = document.getElementById('custName').value;
-        if (!name) return alert("נא להזין שם");
-        
-        try {
-            const response = await fetch(`http://localhost:5000/add-customer?name=${name}&registered_by=${currentUser}`, {method: 'POST'});
-            const data = await response.json();
-            document.getElementById('welcomeMessage').innerText = `✅ הלקוח ${data.customer_name} נוסף בהצלחה ע"י ${currentUser}!`;
-            document.getElementById('custName').value = "";
-        } catch (e) {
-            alert("שגיאה בהוספת לקוח");
-        }
+  async function requireLogin() {
+    if (!authToken()) {
+      window.location.href = "index.html";
+      return;
     }
+    const res = await fetch("http://localhost:5000/me", { headers: { "Authorization": "Bearer " + authToken() } });
+    if (!res.ok) {
+      localStorage.removeItem("auth_token");
+      window.location.href = "index.html";
+      return;
+    }
+    const me = await res.json();
+    document.getElementById('loggedInAs').innerText = "מחובר כרגע: " + me.username;
+  }
+
+  async function addCust() {
+    const welcome = document.getElementById('welcomeMessage');
+    welcome.innerText = "";
+
+    const first_name = document.getElementById('firstName').value.trim();
+    const last_name  = document.getElementById('lastName').value.trim();
+
+    if (!first_name || !last_name) {
+      alert("נא להזין שם פרטי ושם משפחה");
+      return;
+    }
+
+    try {
+      const response = await fetch("http://localhost:5000/add-customer", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ first_name, last_name })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.detail || "שגיאה בהוספת לקוח");
+        return;
+      }
+
+      welcome.innerText = `✅ הלקוח ${data.customer_name} נוסף בהצלחה!`;
+      document.getElementById('firstName').value = "";
+      document.getElementById('lastName').value = "";
+    } catch (e) {
+      alert("שגיאה בחיבור לשרת");
+    }
+  }
+
+  async function logout() {
+    try {
+      await fetch("http://localhost:5000/logout", {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + authToken() }
+      });
+    } catch (e) {}
+    localStorage.removeItem("auth_token");
+    window.location.href = "index.html";
+  }
+
+  requireLogin();
 </script>
 
 </body>

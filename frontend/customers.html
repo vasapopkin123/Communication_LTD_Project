@@ -1,43 +1,77 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <title>רשימת לקוחות - Communication_LTD</title>
-    <style>
-        body { font-family: Arial; background: #f4f7f6; padding: 30px; text-align: center; }
-        table { width: 80%; margin: 20px auto; border-collapse: collapse; background: white; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
-        th { background: #2c3e50; color: white; }
-        tr:nth-child(even) { background: #f2f2f2; }
-        .back-btn { padding: 10px 20px; background: #7f8c8d; color: white; text-decoration: none; border-radius: 5px; }
-    </style>
+  <meta charset="UTF-8">
+  <title>רשימת לקוחות - Communication_LTD</title>
+  <style>
+    body { font-family: Arial; background: #f4f7f6; padding: 30px; text-align: center; }
+    table { width: 80%; margin: 20px auto; border-collapse: collapse; background: white; }
+    th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
+    th { background: #2c3e50; color: white; }
+    tr:nth-child(even) { background: #f2f2f2; }
+    .back-btn { padding: 10px 20px; background: #7f8c8d; color: white; text-decoration: none; border-radius: 5px; }
+  </style>
 </head>
 <body>
-    <h1>רשימת לקוחות מאובטחת</h1>
-    <table id="custTable">
-        <thead>
-            <tr>
-                <th>מזהה</th>
-                <th>שם הלקוח</th>
-                <th>נרשם על ידי (משתמש)</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
-    <br>
-    <a href="system.html" class="back-btn">חזרה להוספה</a>
+  <h1>רשימת לקוחות מאובטחת</h1>
+  <table id="custTable">
+    <thead>
+      <tr>
+        <th>מזהה</th>
+        <th>שם הלקוח</th>
+        <th>נרשם על ידי (משתמש)</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
-    <script>
-        async function loadCustomers() {
-            const res = await fetch('http://localhost:5000/get-customers');
-            const data = await res.json();
-            const tbody = document.querySelector("#custTable tbody");
-            tbody.innerHTML = "";
-            data.forEach(c => {
-                tbody.innerHTML += `<tr><td>${c.id}</td><td>${c.full_name}</td><td>${c.registered_by}</td></tr>`;
-            });
-        }
-        loadCustomers();
+  <br>
+  <a href="system.html" class="back-btn">חזרה להוספה</a>
+
+  <script>
+    function token() {
+      return localStorage.getItem("auth_token");
+    }
+
+    async function loadCustomers() {
+        const t = token();
+        if (!t) {
+        window.location.href = "index.html";
+        return;
+      }
+
+      const res = await fetch('http://localhost:5000/get-customers', {
+        headers: { "Authorization": "Bearer " + t }
+      });
+
+      if (res.status === 401) {
+        localStorage.removeItem("auth_token");
+        window.location.href = "index.html";
+        return;
+      }
+
+      const data = await res.json();
+      const tbody = document.querySelector("#custTable tbody");
+      tbody.textContent = ""; // clear safely
+
+      data.forEach(c => {
+        const tr = document.createElement("tr");
+
+        const td1 = document.createElement("td");
+        td1.textContent = String(c.id);
+
+        const td2 = document.createElement("td");
+        td2.textContent = c.full_name;
+
+        const td3 = document.createElement("td");
+        td3.textContent = c.registered_by;
+
+        tr.append(td1, td2, td3);
+        tbody.appendChild(tr);
+        });
+    }
+
+    loadCustomers();
     </script>
 </body>
 </html>
