@@ -1,10 +1,16 @@
 import mysql.connector
+import time
+import smtplib
+import re
+from email.mime.text import MIMEText
+from config import SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM
+from datetime import datetime, timedelta
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from security import hash_password_hmac, verify_password_hmac, validate_password_strength, generate_sha1_token
 from config import PASSWORD_CONFIG
-import time
+from pydantic import BaseModel, Field
 
 app = FastAPI()
 
@@ -59,6 +65,20 @@ cursor.execute("""
         registered_by VARCHAR(255) NOT NULL
     )
 """)
+try:
+    cursor.execute("ALTER TABLE users ADD COLUMN locked_until DATETIME NULL")
+    conn.commit()
+except mysql.connector.Error:
+    pass
+
+try:
+    cursor.execute("ALTER TABLE customers ADD COLUMN first_name VARCHAR(255) NULL")
+    cursor.execute("ALTER TABLE customers ADD COLUMN last_name VARCHAR(255) NULL")
+    cursor.execute("ALTER TABLE customers ADD COLUMN registered_by_user_id INT NULL")
+    conn.commit()
+except mysql.connector.Error:
+    pass
+    
 conn.close()
 
 class UserRegister(BaseModel):
@@ -70,6 +90,45 @@ class ChangePassword(BaseModel):
     username: str
     old_password: str
     new_password: str
+
+class CustomerCreate(BaseModel):
+    first_name: str = Field(min_length=1, max_length=80)
+    last_name: str  = Field(min_length=1, max_length=80)
+    registered_by_username: str = Field(min_length=1, max_length=255)
+
+
+def send_email(to_email: str, subject: str, body: str):
+    msg = MIMEText(body, _charset="utf-8")
+    msg["Subject"] = subject
+    msg["From"] = SMTP_FROM
+    msg["To"] = to_email
+
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as s:
+        s.starttls()
+        s.login(SMTP_USER, SMTP_PASS)
+        s.sendmail(SMTP_FROM, [to_email], msg.as_string())
+
+
+ALLOWED_SORT = {
+    "username": "username",
+    "email": "email",
+    "id": "id",
+}
+
+def get_users_sorted(sort_col: str):
+    col = ALLOWED_SORT.get(sort_col, "id")
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute(f"SELECT id, username, email FROM users ORDER BY `{col}`")
+    rows = cursor.fetchall()
+    conn.close()
+    return rows      
+
+AME_RE = re.compile(r"^[A-Za-zא-ת][A-Za-zא-ת \-']{0,79}$")
+
+def validate_name(s: str, field: str):
+    if not NAME_RE.match(s):
+        raise HTTPException(status_code=400, detail=f"{field} contains invalid characters")
 
 @app.post("/register")
 def register(user: UserRegister):
@@ -103,24 +162,62 @@ def login(user: UserRegister):
         conn.close()
         raise HTTPException(status_code=404, detail="User not found")
     
-    if db_user['is_locked']:
-        conn.close()
-        raise HTTPException(status_code=403, detail="החשבון נעול! פנה למנהל המערכת")
+    now = datetime.utcnow()
 
-    if verify_password_hmac(user.password, db_user['password_hash'], db_user['salt']):
-        cursor.execute("UPDATE users SET failed_attempts = 0 WHERE id = %s", (db_user['id'],))
+    if db_user.get("is_locked") and db_user.get("locked_until") is None:
+        cursor.execute(
+            "UPDATE users SET is_locked = 0, failed_attempts = 0 WHERE id = %s",
+            (db_user["id"],)
+        )
+        conn.commit()
+        # רענון מצב משתמש
+        cursor.execute("SELECT * FROM users WHERE id = %s", (db_user["id"],))
+        db_user = cursor.fetchone()
+
+    locked_until = db_user.get("locked_until")
+    if locked_until and locked_until > now:
+        conn.close()
+        remaining = int((locked_until - now).total_seconds() // 60) + 1
+        raise HTTPException(status_code=403, detail=f"החשבון נעול לעוד {remaining} דקות")
+
+    if locked_until and locked_until <= now:
+        cursor.execute(
+            "UPDATE users SET is_locked = 0, failed_attempts = 0, locked_until = NULL WHERE id = %s",
+            (db_user["id"],)
+        )
+        conn.commit()
+        cursor.execute("SELECT * FROM users WHERE id = %s", (db_user["id"],))
+        db_user = cursor.fetchone()
+
+    if verify_password_hmac(user.password, db_user["password_hash"], db_user["salt"]):
+        cursor.execute(
+            "UPDATE users SET failed_attempts = 0, is_locked = 0, locked_until = NULL WHERE id = %s",
+            (db_user["id"],)
+        )
         conn.commit()
         conn.close()
         return {"message": "Success"}
-    else:
-        new_attempts = db_user['failed_attempts'] + 1
-        lock_status = new_attempts >= PASSWORD_CONFIG["max_login_attempts"]
-        cursor.execute("UPDATE users SET failed_attempts = %s, is_locked = %s WHERE id = %s", 
-                       (new_attempts, lock_status, db_user['id']))
+
+    # failed attempt
+    new_attempts = db_user["failed_attempts"] + 1
+    max_attempts = PASSWORD_CONFIG["max_login_attempts"]  # :contentReference[oaicite:9]{index=9}
+    if new_attempts >= max_attempts:
+        until = now + timedelta(minutes=PASSWORD_CONFIG["lock_minutes"])
+        cursor.execute(
+            "UPDATE users SET failed_attempts = %s, is_locked = 1, locked_until = %s WHERE id = %s",
+            (new_attempts, until, db_user["id"])
+        )
         conn.commit()
         conn.close()
-        error_msg = "סיסמה שגויה" if not lock_status else "החשבון ננעל עקב 3 ניסיונות כושלים"
-        raise HTTPException(status_code=401, detail=error_msg)
+        raise HTTPException(status_code=401, detail="החשבון ננעל ל-30 דקות עקב 3 ניסיונות כושלים")
+
+    cursor.execute(
+        "UPDATE users SET failed_attempts = %s WHERE id = %s",
+        (new_attempts, db_user["id"])
+    )
+    conn.commit()
+    conn.close()
+    raise HTTPException(status_code=401, detail="סיסמה שגויה")
 
 @app.post("/change-password")
 def change_password(data: ChangePassword):
@@ -162,24 +259,61 @@ def forgot_password(username: str, email: str):
     cursor.execute("SELECT email FROM users WHERE username = %s", (username,))
     user = cursor.fetchone()
     conn.close()
+
     if not user or user['email'] != email:
         raise HTTPException(status_code=404, detail="User or Email incorrect")
-    return {"sha1_token": generate_sha1_token()}
+
+    token = generate_sha1_token()
+    send_email(
+        to_email=email,
+        subject="Comunication_LTD - Password Reset Token",
+        body=f"הטוקן לאיפוס סיסמה הוא:\n\n{token}\n\nהזן אותו במסך איפוס הסיסמה."
+    )
+
+    return {"message": "אם הפרטים נכונים, נשלח טוקן למייל"}
+
 
 @app.post("/add-customer")
-def add_customer(name: str, registered_by: str):
+def add_customer(data: CustomerCreate):
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO customers (full_name, registered_by) VALUES (%s, %s)", (name, registered_by))
+    cursor = conn.cursor(dictionary=True)
+
+    validate_name(data.first_name, "first_name")
+    validate_name(data.last_name, "last_name")
+
+    cursor.execute("SELECT id FROM users WHERE username = %s", (data.registered_by_username,))
+    user = cursor.fetchone()
+    if not user:
+        conn.close()
+        raise HTTPException(status_code=400, detail="registered_by user not found")
+
+    cursor2 = conn.cursor()
+    cursor2.execute(
+        "INSERT INTO customers (first_name, last_name, registered_by_user_id) VALUES (%s, %s, %s)",
+        (data.first_name, data.last_name, user["id"])
+    )
     conn.commit()
     conn.close()
-    return {"customer_name": name, "registered_by": registered_by}
+
+    return {
+        "customer_first_name": data.first_name,
+        "customer_last_name": data.last_name,
+        "registered_by_user_id": user["id"]
+    }
 
 @app.get("/get-customers")
 def get_customers():
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM customers")
+    cursor.execute("""
+        SELECT c.id, c.first_name, c.last_name, c.registered_by_user_id
+        FROM customers c
+    """)
     result = cursor.fetchall()
     conn.close()
+
+    # ✅ Encode ביציאה (כדי שגם אם פרונט משתמש innerHTML – יצמצם נזק)
+    for r in result:
+        r["first_name"] = html_encode(r.get("first_name") or "")
+        r["last_name"]  = html_encode(r.get("last_name") or "")
     return result

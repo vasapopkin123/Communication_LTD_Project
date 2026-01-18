@@ -1,8 +1,6 @@
-version: "3.9"
-
 services:
   mysql:
-    image: mysql:8.0
+    image: mysql:8.4
     container_name: my_mysql_db
     restart: always
     environment:
@@ -22,13 +20,15 @@ services:
       - "5000:5000"
     environment:
       DATABASE_URL: mysql+mysqlconnector://user:password@mysql:3306/my_app_db
+      EMAIL_ADDRESS: ${EMAIL_ADDRESS}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
     depends_on:
       - mysql
     volumes:
       - ./backend:/app
 
   frontend:
-    image: nginx:alpine
+    image: nginx:1.29-alpine-perl
     container_name: my_frontend_app
     ports:
       - "3000:80"
