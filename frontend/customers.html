@@ -29,44 +29,52 @@
   <a href="system.html" class="back-btn">חזרה להוספה</a>
 
   <script>
-    function token() {
-      return localStorage.getItem("auth_token");
-    }
-
     async function loadCustomers() {
-        const t = token();
-        if (!t) {
+        const token = localStorage.getItem("auth_token");
+        if (!token) {
         window.location.href = "index.html";
         return;
-      }
+        }
 
-      const res = await fetch('http://localhost:5000/get-customers', {
-        headers: { "Authorization": "Bearer " + t }
-      });
+        const res = await fetch("http://localhost:5000/get-customers", {
+        headers: { "Authorization": "Bearer " + token }
+        });
 
-      if (res.status === 401) {
-        localStorage.removeItem("auth_token");
-        window.location.href = "index.html";
+        const data = await res.json();
+
+        if (!res.ok) {
+        console.error("get-customers failed:", res.status, data);
+        if (res.status === 401) {
+            localStorage.removeItem("auth_token");
+            window.location.href = "index.html";
+        } else {
+            alert(data.detail || "Server error");
+        }
         return;
-      }
+        }
 
-      const data = await res.json();
-      const tbody = document.querySelector("#custTable tbody");
-      tbody.textContent = ""; // clear safely
+        if (!Array.isArray(data)) {
+        console.error("Expected array, got:", data);
+        alert("Unexpected server response");
+        return;
+        }
 
-      data.forEach(c => {
+        const tbody = document.querySelector("#custTable tbody");
+        tbody.textContent = ""; // safe clear
+
+        data.forEach(c => {
         const tr = document.createElement("tr");
 
-        const td1 = document.createElement("td");
-        td1.textContent = String(c.id);
+        const tdId = document.createElement("td");
+        tdId.textContent = String(c.id);
 
-        const td2 = document.createElement("td");
-        td2.textContent = c.full_name;
+        const tdName = document.createElement("td");
+        tdName.textContent = c.full_name;
 
-        const td3 = document.createElement("td");
-        td3.textContent = c.registered_by;
+        const tdBy = document.createElement("td");
+        tdBy.textContent = c.registered_by;
 
-        tr.append(td1, td2, td3);
+        tr.append(tdId, tdName, tdBy);
         tbody.appendChild(tr);
         });
     }
