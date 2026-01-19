@@ -3,13 +3,11 @@ import re
 import time
 import hashlib
 import secrets
-from datetime import datetime, timedelta, timezone
-
+from datetime import datetime, timedelta, timezone 
 import mysql.connector
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Header , Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-
 from security import hash_password_hmac, verify_password_hmac, validate_password_strength
 from config import PASSWORD_CONFIG
 
@@ -20,9 +18,17 @@ LOCK_MINUTES = 30
 AUTH_TOKEN_TTL_HOURS = 12
 RESET_TOKEN_TTL_MINUTES = 30
 
+
+# -----------------------------
+# Whitelists
+# -----------------------------
 # Whitelist validation for names (prevents storing "<script...>" etc.)
 NAME_RE = re.compile(r"^[A-Za-zא-ת][A-Za-zא-ת \-']{0,79}$")
 
+USERNAME_RE = re.compile(r"^[A-Za-z0-9א-ת][A-Za-z0-9א-ת_.-]{2,31}$")
+
+# Email: בדיקה בסיסית/פרקטית (לא RFC מלא), אורך סביר, בלי רווחים
+EMAIL_RE = re.compile(r"^(?=.{5,254}$)[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
 
 def utcnow_naive() -> datetime:
     # store as naive UTC for MySQL DATETIME
@@ -37,6 +43,20 @@ def validate_person_name(value: str, field: str) -> None:
     if not value or not NAME_RE.match(value):
         raise HTTPException(status_code=400, detail=f"{field} contains invalid characters")
 
+def validate_username(value: str) -> str:
+    v = (value or "").strip()
+    if not USERNAME_RE.match(v):
+        raise HTTPException(
+            status_code=400,
+            detail="Username לא תקין: מותר אותיות/מספרים/._- (וללא רווחים), אורך 3–32",
+        )
+    return v
+
+def validate_email(value: str) -> str:
+    v = (value or "").strip()
+    if not EMAIL_RE.match(v):
+        raise HTTPException(status_code=400, detail="Email לא תקין")
+    return v
 
 # -----------------------------
 # FastAPI + CORS
@@ -312,6 +332,9 @@ def send_email_best_effort(to_email: str, subject: str, body: str) -> bool:
 # -----------------------------
 @app.post("/register")
 def register(req: RegisterRequest):
+    req.username = validate_username(req.username)
+    req.email = validate_email(req.email)
+
     is_strong, msg = validate_password_strength(req.password)
     if not is_strong:
         raise HTTPException(status_code=400, detail=msg)
@@ -341,6 +364,8 @@ def register(req: RegisterRequest):
 
 @app.post("/login")
 def login(req: LoginRequest):
+    req.username = validate_username(req.username)
+
     conn = get_db_connection()
     cur = conn.cursor(dictionary=True)
     cur.execute("SELECT * FROM users WHERE username = %s", (req.username,))
@@ -537,6 +562,9 @@ def get_customers(authorization: str | None = Header(default=None)):
 
 @app.post("/forgot-password")
 def forgot_password(req: ForgotPasswordRequest):
+    req.username = validate_username(req.username)
+    req.email = validate_email(req.email)
+
     # do not leak more details than needed
     conn = get_db_connection()
     cur = conn.cursor(dictionary=True)
@@ -577,6 +605,8 @@ def forgot_password(req: ForgotPasswordRequest):
 
 @app.post("/reset-password")
 def reset_password(req: ResetPasswordRequest):
+    req.username = validate_username(req.username)
+
     is_strong, msg = validate_password_strength(req.new_password)
     if not is_strong:
         raise HTTPException(status_code=400, detail=msg)

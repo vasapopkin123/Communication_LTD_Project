@@ -7,8 +7,7 @@ PASSWORD_CONFIG = {
     "require_numbers": True,
     "require_special": True,
     "history_limit": 3,
-    "max_login_attempts": 3,
-    "lock_minutes": 30, 
+    "max_login_attempts": 3, 
     "forbidden_words": ["123456", "password", "communication", "admin", "12345678"]
 }
 
