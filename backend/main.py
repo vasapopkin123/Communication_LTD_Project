@@ -324,6 +324,8 @@ def send_email_best_effort(to_email: str, subject: str, body: str) -> bool:
         s.starttls()
         s.login(user, pwd)
         s.sendmail(from_addr, [to_email], msg.as_string())
+
+    print("Sending email to:", to_email)
     return True
 
 

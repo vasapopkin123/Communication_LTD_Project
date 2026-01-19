@@ -19,9 +19,13 @@ services:
     ports:
       - "5000:5000"
     environment:
-      DATABASE_URL: mysql+mysqlconnector://user:password@mysql:3306/my_app_db
-      EMAIL_ADDRESS: ${EMAIL_ADDRESS}
-      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
+     - DATABASE_URL=mysql+mysqlconnector://user:password@mysql:3306/my_app_db
+     - SMTP_HOST=${SMTP_HOST}
+     - SMTP_PORT=${SMTP_PORT}
+     - SMTP_USER=${SMTP_USER}
+     - SMTP_PASS=${SMTP_PASS}
+     - SMTP_FROM=${SMTP_FROM}
+     - DEV_RETURN_RESET_TOKEN=0
     depends_on:
       - mysql
     volumes:
