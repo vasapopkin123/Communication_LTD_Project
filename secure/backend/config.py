@@ -1,4 +1,3 @@
-from settings import EMAIL_ADDRESS, EMAIL_PASSWORD
 
 PASSWORD_CONFIG = {
     "min_length": 10,
@@ -12,9 +11,3 @@ PASSWORD_CONFIG = {
 }
 
 SECRET_KEY = "LTD_SECRET_KEY_2025"
-
-smtp_server = "smtp.gmail.com"
-smtp_port = 587
-sender_email = EMAIL_ADDRESS
-sender_password = EMAIL_PASSWORD
-subject = "Your Recovery Password"
