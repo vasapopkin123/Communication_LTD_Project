@@ -5,10 +5,10 @@ import hashlib
 import secrets
 from datetime import datetime, timedelta, timezone 
 import mysql.connector
-from fastapi import FastAPI, HTTPException, Header , Query
+from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from security import hash_password_hmac, verify_password_hmac, validate_password_strength
+from security import generate_sha1_token, hash_password_hmac, verify_password_hmac, validate_password_strength
 from config import PASSWORD_CONFIG
 
 # -----------------------------
@@ -577,9 +577,8 @@ def forgot_password(req: ForgotPasswordRequest):
     if not u or u["email"] != req.email:
         raise HTTPException(status_code=404, detail="User or Email incorrect")
 
-    # Create reset token (SHA-256 hash stored in DB; raw sent to user)
-    raw_token = secrets.token_urlsafe(24)
-    token_hash = sha256_hex(raw_token)
+    raw_token = generate_sha1_token()      
+    token_hash = sha256_hex(raw_token) 
     now = utcnow_naive()
     expires = now + timedelta(minutes=RESET_TOKEN_TTL_MINUTES)
 

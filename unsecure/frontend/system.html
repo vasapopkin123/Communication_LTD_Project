@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Communication_LTD - ניהול לקוחות</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f7f6;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .navbar {
+            background: #2c3e50;
+            color: white;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 30px auto;
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        
+        h1 {
+            color: #2c3e50;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 20px;
+        }
+        
+        input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 250px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .nav-buttons a {
+            color: white;
+            text-decoration: none;
+            margin-right: 15px;
+            background: #34495e;
+            padding: 8px 12px;
+            border-radius: 4px;
+        }
+        
+        #welcomeMessage {
+            margin-top: 20px;
+            font-weight: bold;
+            color: #27ae60;
+        }
+        
+        .btn-view {
+            background: #3498db;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="navbar">
+        <div>Communication_LTD - פאנל ניהול</div>
+        <div class="nav-buttons">
+            <a id="changePassBtn" href="#">⚙️ שינוי סיסמה</a>
+            <a href="index.html" style="background:#e74c3c;">יציאה</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>ניהול לקוחות</h1>
+        <p id="loggedInAs"></p>
+        <div class="form-group">
+            <h3>הוספת לקוח חדש</h3>
+            <input type="text" id="custName" placeholder="שם מלא של הלקוח">
+            <button onclick="addCust()">הוסף למערכת</button>
+            <div id="welcomeMessage"></div>
+        </div>
+
+        <button class="btn-view" onclick="window.location.href='customers.html'">📂 צפה ברשימת כל הלקוחות</button>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentUser = urlParams.get('user') || "אורח";
+        document.getElementById('loggedInAs').innerText = "מחובר כרגע: " + currentUser;
+
+        document.getElementById('changePassBtn').href = "change_password.html?user=" + currentUser;
+
+        async function addCust() {
+            const name = document.getElementById('custName').value;
+            if (!name) return alert("נא להזין שם");
+
+            try {
+                const response = await fetch(`http://localhost:5001/add-customer?name=${name}&registered_by=${currentUser}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                document.getElementById('welcomeMessage').innerText = `✅ הלקוח ${data.customer_name} נוסף בהצלחה ע"י ${currentUser}!`;
+                document.getElementById('custName').value = "";
+            } catch (e) {
+                alert("שגיאה בהוספת לקוח");
+            }
+        }
+    </script>
+
+</body>
+
+</html>

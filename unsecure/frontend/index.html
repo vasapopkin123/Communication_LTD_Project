@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Communication_LTD - התחברות</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #2c3e50;
+            color: white;
+            display: flex;
+            justify-content: center;
+            padding-top: 50px;
+        }
+        
+        .card {
+            background: #34495e;
+            padding: 20px;
+            border-radius: 10px;
+            width: 350px;
+            text-align: center;
+        }
+        
+        input {
+            width: 90%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: none;
+        }
+        
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        .links {
+            margin-top: 15px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8em;
+        }
+        
+        a {
+            color: #bdc3c7;
+            text-decoration: none;
+        }
+        
+        #status {
+            margin-top: 15px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <h2>Communication_LTD</h2>
+        <h3>כניסה למערכת</h3>
+        <input type="text" id="user" placeholder="שם משתמש">
+        <input type="password" id="pass" placeholder="סיסמה">
+        <button onclick="login()">התחבר</button>
+        <div id="status"></div>
+        <div class="links">
+            <a href="register.html">משתמש חדש? רשם</a>
+            <a href="forgot.html">שכחתי סיסמה</a>
+        </div>
+    </div>
+
+    <script>
+        async function login() {
+            const status = document.getElementById('status');
+            const usernameValue = document.getElementById('user').value;
+
+            try {
+                const response = await fetch('http://localhost:5001/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: usernameValue,
+                        password: document.getElementById('pass').value,
+                        email: "dummy@temp.com"
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    window.location.href = "system.html?user=" + encodeURIComponent(usernameValue);
+                } else {
+                    status.style.color = "#e74c3c";
+                    status.innerText = data.detail;
+                }
+            } catch (e) {
+                status.innerText = "שגיאה בחיבור";
+            }
+        }
+    </script>
+</body>
+
+</html>
