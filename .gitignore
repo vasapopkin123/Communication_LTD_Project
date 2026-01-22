@@ -1,4 +1,5 @@
 __pycache__/
 *.pyc
 db_data/
-.env
+/secure/.env
+/unsecure/.env

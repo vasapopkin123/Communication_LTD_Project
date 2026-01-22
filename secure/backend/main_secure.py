@@ -3,6 +3,8 @@ import re
 import time
 import hashlib
 import secrets
+from email.mime.text import MIMEText
+import smtplib
 from datetime import datetime, timedelta, timezone 
 import mysql.connector
 from fastapi import FastAPI, HTTPException, Header
@@ -64,7 +66,8 @@ def validate_email(value: str) -> str:
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins="http://localhost:3000",
+    allow_credentials=True,  
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -299,14 +302,17 @@ def send_email_best_effort(to_email: str, subject: str, body: str) -> bool:
     """
     Uses SMTP_* env vars if present; otherwise prints to console (demo-friendly).
     """
-    from email.mime.text import MIMEText
-    import smtplib
 
-    host = os.getenv("SMTP_HOST")
-    port = int(os.getenv("SMTP_PORT", "587"))
-    user = os.getenv("SMTP_USER")
-    pwd = os.getenv("SMTP_PASS")
-    from_addr = os.getenv("SMTP_FROM") or user
+    host = (os.getenv("SMTP_HOST") or "").strip()
+    port_str = (os.getenv("SMTP_PORT") or "587").strip()
+    user = (os.getenv("SMTP_USER") or "").strip()
+    pwd = (os.getenv("SMTP_PASS") or "").strip()
+    from_addr = (os.getenv("SMTP_FROM") or user).strip()
+
+    try:
+        port = int(port_str) if port_str else 587
+    except ValueError:
+        port = 587
 
     if not host or not user or not pwd or not from_addr:
         print("SMTP not configured. Email fallback to console.")
@@ -320,13 +326,19 @@ def send_email_best_effort(to_email: str, subject: str, body: str) -> bool:
     msg["From"] = from_addr
     msg["To"] = to_email
 
-    with smtplib.SMTP(host, port) as s:
-        s.starttls()
-        s.login(user, pwd)
-        s.sendmail(from_addr, [to_email], msg.as_string())
-
-    print("Sending email to:", to_email)
-    return True
+    try:
+        with smtplib.SMTP(host, port, timeout=10) as s:
+            s.starttls()
+            s.login(user, pwd)
+            s.sendmail(from_addr, [to_email], msg.as_string())
+        print("Email sent to:", to_email)
+        return True
+    except Exception as e:
+        print(f"SMTP send failed ({type(e).__name__}): {e}. Falling back to console.")
+        print("To:", to_email)
+        print("Subject:", subject)
+        print(body)
+        return False
 
 
 # -----------------------------
@@ -597,9 +609,6 @@ def forgot_password(req: ForgotPasswordRequest):
         body=f"קוד איפוס הסיסמה שלך הוא:\n{raw_token}\n\nבתוקף עד: {expires} (UTC)\n",
     )
 
-    # Demo-friendly: return token only if DEV_RETURN_RESET_TOKEN=1
-    if os.getenv("DEV_RETURN_RESET_TOKEN", "1") == "1":
-        return {"message": "Reset token created", "reset_token": raw_token, "expires_at": str(expires)}
 
     return {"message": "If the details are correct, a reset token was sent to the email."}
 

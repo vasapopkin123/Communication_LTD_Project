@@ -1,83 +1,143 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
+
 <head>
-  <meta charset="UTF-8">
-  <title>שחזור גישה</title>
-  <style>
-    body { font-family: Arial; background: #2c3e50; color: white; display: flex; justify-content: center; padding-top: 50px; }
-    .card { background: #34495e; padding: 20px; border-radius: 10px; width: 380px; }
-    input { width: 90%; padding: 10px; margin: 10px 0; border-radius: 5px; border: none; }
-    button { width: 100%; padding: 10px; background: #e67e22; color: white; border: none; border-radius: 5px; cursor: pointer; }
-    #note { margin-top: 10px; color: #f1c40f; word-break: break-all; }
-    hr { border: none; border-top: 1px solid rgba(255,255,255,0.2); margin: 16px 0; }
-  </style>
+    <meta charset="UTF-8">
+    <title>שחזור גישה</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #2c3e50;
+            color: white;
+            display: flex;
+            justify-content: center;
+            padding-top: 50px;
+        }
+        
+        .card {
+            background: #34495e;
+            padding: 20px;
+            border-radius: 10px;
+            width: 380px;
+        }
+        
+        input {
+            width: 90%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: none;
+        }
+        
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #e67e22;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        #note {
+            margin-top: 10px;
+            color: #f1c40f;
+            word-break: break-all;
+        }
+        
+        hr {
+            border: none;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            margin: 16px 0;
+        }
+    </style>
 </head>
+
 <body>
-  <div class="card">
-    <h2>שחזור גישה</h2>
+    <div class="card">
+        <h2>שחזור גישה</h2>
 
-    <h4>שלב 1: קבלת קוד</h4>
-    <input type="text" id="user" placeholder="שם משתמש">
-    <input type="email" id="email" placeholder="אימייל איתו נרשמת">
-    <button onclick="getToken()">קבל קוד אימות</button>
-    <div id="note"></div>
+        <h4>שלב 1: קבלת קוד</h4>
+        <input type="text" id="user" placeholder="שם משתמש">
+        <input type="email" id="email" placeholder="אימייל איתו נרשמת">
+        <button onclick="getToken()">קבל קוד אימות</button>
+        <div id="note"></div>
 
-    <hr>
+        <hr>
 
-    <h4>שלב 2: איפוס סיסמה</h4>
-    <input type="text" id="inputToken" placeholder="הזן קוד (Reset Token)">
-    <input type="password" id="newPass" placeholder="סיסמה חדשה (מורכבת)">
-    <button onclick="resetPassword()" style="background: #9b59b6;">אפס סיסמה</button>
+        <h4>שלב 2: איפוס סיסמה</h4>
+        <input type="text" id="inputToken" placeholder="הזן קוד (Reset Token)">
+        <input type="password" id="newPass" placeholder="סיסמה חדשה (מורכבת)">
+        <button onclick="resetPassword()" style="background: #9b59b6;">אפס סיסמה</button>
 
-    <br><br><a href="index.html" style="color:white">חזרה</a>
-  </div>
+        <br><br><a href="index.html" style="color:white">חזרה</a>
+    </div>
 
-  <script>
-    async function getToken() {
-      const username = document.getElementById('user').value.trim();
-      const email = document.getElementById('email').value.trim();
-      const note = document.getElementById('note');
-      note.innerText = "";
+    <script>
+        async function getToken() {
+            const username = document.getElementById('user').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const note = document.getElementById('note');
+            note.innerText = "";
 
-      if (!username || !email) { alert("נא למלא שם משתמש ואימייל"); return; }
+            if (!username || !email) {
+                alert("נא למלא שם משתמש ואימייל");
+                return;
+            }
 
-      const res = await fetch('http://localhost:5000/forgot-password', {
-        method:'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, email })
-      });
+            const res = await fetch('http://localhost:5000/forgot-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username,
+                    email
+                })
+            });
 
-      const data = await res.json();
-      if (!res.ok) { alert(data.detail || "שגיאה"); return; }
+            const data = await res.json();
+            if (!res.ok) {
+                alert(data.detail || "שגיאה");
+                return;
+            }
 
-      // במצב DEV השרת מחזיר reset_token כדי שתוכל לבדוק מקומית.
-      // בפרודקשן זה יגיע רק במייל.
-      if (data.reset_token) {
-        note.innerText = "מצב DEV: הקוד הוא: " + data.reset_token;
-      } else {
-        note.innerText = data.message || "אם הפרטים נכונים, קוד נשלח למייל.";
-      }
-    }
+            note.innerText = data.message || "אם הפרטים נכונים, קוד נשלח למייל.";
 
-    async function resetPassword() {
-      const username = document.getElementById('user').value.trim();
-      const token = document.getElementById('inputToken').value.trim();
-      const new_password = document.getElementById('newPass').value;
+        }
 
-      if (!username || !token || !new_password) { alert("נא למלא את כל השדות"); return; }
+        async function resetPassword() {
+            const username = document.getElementById('user').value.trim();
+            const token = document.getElementById('inputToken').value.trim();
+            const new_password = document.getElementById('newPass').value;
 
-      const res = await fetch('http://localhost:5000/reset-password', {
-        method:'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, token, new_password })
-      });
+            if (!username || !token || !new_password) {
+                alert("נא למלא את כל השדות");
+                return;
+            }
 
-      const data = await res.json();
-      if (!res.ok) { alert(data.detail || "שגיאה"); return; }
+            const res = await fetch('http://localhost:5000/reset-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username,
+                    token,
+                    new_password
+                })
+            });
 
-      alert("הסיסמה אופסה בהצלחה. התחבר מחדש.");
-      window.location.href = "index.html";
-    }
-  </script>
+            const data = await res.json();
+            if (!res.ok) {
+                alert(data.detail || "שגיאה");
+                return;
+            }
+
+            alert("הסיסמה אופסה בהצלחה. התחבר מחדש.");
+            window.location.href = "index.html";
+        }
+    </script>
 </body>
+
 </html>

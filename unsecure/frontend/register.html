@@ -85,10 +85,10 @@
                     alert("נרשמת בהצלחה!");
                     window.location.href = "index.html";
                 } else {
-                    status.innerText = data.detail || `Server error (${response.status})`;
+                    status.innerText = "Server Error: " + (data.detail || response.status);
                 }
             } catch (err) {
-                status.innerText = "השרת לא החזיר תשובה. בדוק שה־backend רץ על פורט 5001 ושאין קריסה בלוגים.";
+                status.innerText = "בעיה בשרת";
                 console.error(err);
             }
         }

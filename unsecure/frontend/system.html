@@ -103,25 +103,30 @@
     </div>
 
     <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        const currentUser = urlParams.get('user') || "אורח";
+        const currentUser = localStorage.getItem("unsecure_user") || "אורח";
         document.getElementById('loggedInAs').innerText = "מחובר כרגע: " + currentUser;
 
-        document.getElementById('changePassBtn').href = "change_password.html?user=" + currentUser;
+        document.getElementById('changePassBtn').href = "change_password.html?user=" + encodeURIComponent(currentUser);
 
         async function addCust() {
             const name = document.getElementById('custName').value;
-            if (!name) return alert("נא להזין שם");
+            const params = new URLSearchParams({
+                name: name,
+                registered_by: currentUser
+            });
 
             try {
-                const response = await fetch(`http://localhost:5001/add-customer?name=${name}&registered_by=${currentUser}`, {
+                const response = await fetch(`http://localhost:5001/add-customer?${params.toString()}`, {
                     method: 'POST'
                 });
                 const data = await response.json();
-                document.getElementById('welcomeMessage').innerText = `✅ הלקוח ${data.customer_name} נוסף בהצלחה ע"י ${currentUser}!`;
-                document.getElementById('custName').value = "";
+                if (response.ok) {
+                    document.getElementById('welcomeMessage').innerText = `✅ הלקוח ${data.customer_name} נוסף!`;
+                } else {
+                    alert("SQL Error: " + data.detail);
+                }
             } catch (e) {
-                alert("שגיאה בהוספת לקוח");
+                alert("Connection Error");
             }
         }
     </script>

@@ -95,10 +95,12 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    window.location.href = "system.html?user=" + encodeURIComponent(usernameValue);
+                    localStorage.setItem("unsecure_user", usernameValue);
+                    window.location.href = "system.html";
                 } else {
                     status.style.color = "#e74c3c";
-                    status.innerText = data.detail;
+                    // הצגת השגיאה המפורטת מהשרת
+                    status.innerText = "Error: " + (data.detail || "Unknown error");
                 }
             } catch (e) {
                 status.innerText = "שגיאה בחיבור";

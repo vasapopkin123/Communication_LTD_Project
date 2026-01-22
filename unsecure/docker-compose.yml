@@ -19,15 +19,20 @@ services:
       dockerfile: Dockerfile
     container_name: my_backend_app_not_secure
     ports:
-      - "5001:5000"
+      - "5001:5001"
     environment:
-     - DATABASE_URL=mysql+mysqlconnector://user:password@mysql:3306/my_app_db
-     - SMTP_HOST=${SMTP_HOST}
-     - SMTP_PORT=${SMTP_PORT}
-     - SMTP_USER=${SMTP_USER}
-     - SMTP_PASS=${SMTP_PASS}
-     - SMTP_FROM=${SMTP_FROM}
-     - DEV_RETURN_RESET_TOKEN=0
+      DATABASE_URL: mysql+mysqlconnector://user:password@mysql:3306/my_app_db_not_secure
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: my_app_db_not_secure
+      DB_USER: user
+      DB_PASSWORD: password
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      SMTP_FROM: ${SMTP_FROM}
+      DEV_RETURN_RESET_TOKEN: 0
     depends_on:
       - mysql
     volumes:

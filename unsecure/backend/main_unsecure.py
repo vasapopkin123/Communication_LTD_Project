@@ -16,58 +16,50 @@ from fastapi.responses import HTMLResponse
 
 app = FastAPI()
 
+@app.on_event("startup")
+def startup():
+    ensure_schema()
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-B_HOST = os.getenv("DB_HOST", "my_mysql_db_not_secure")
+DB_HOST = os.getenv("DB_HOST", "mysql")
 DB_PORT = int(os.getenv("DB_PORT", "3306"))
+DB_NAME = os.getenv("DB_NAME", "my_app_db_not_secure")
 DB_USER = os.getenv("DB_USER", "user")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "password")
-DB_NAME = os.getenv("DB_NAME", "my_app_db")
 
-# If your MySQL is slow to start, you can let the API retry a few times.
-DB_CONNECT_RETRIES = int(os.getenv("DB_CONNECT_RETRIES", "20"))
-DB_CONNECT_SLEEP_SECONDS = int(os.getenv("DB_CONNECT_SLEEP_SECONDS", "2"))
-
-_DB_SCHEMA_READY = False
-
-
-def _connect_db_once():
-    # mysql-connector: use connection_timeout to avoid hanging sockets
-    return mysql.connector.connect(
-        host=DB_HOST,
-        port=DB_PORT,
-        user=DB_USER,
-        password=DB_PASSWORD,
-        database=DB_NAME,
-        connection_timeout=5,
-    )
-
-
-def _ensure_db_schema():
-    """Create tables/columns once. Never block import-time."""
-    global _DB_SCHEMA_READY
-    if _DB_SCHEMA_READY:
-        return
-
-    # Try a few times (DB may still be starting)
-    last_err = None
-    for _ in range(DB_CONNECT_RETRIES):
+def get_db_connection():
+    while True:
         try:
-            conn = _connect_db_once()
-            break
-        except Exception as e:
-            last_err = e
-            print(f"DB not ready ({type(e).__name__}). Retrying in {DB_CONNECT_SLEEP_SECONDS}s...")
-            time.sleep(DB_CONNECT_SLEEP_SECONDS)
-    else:
-        raise RuntimeError(f"DB connection failed after retries: {last_err}")
+            return mysql.connector.connect(
+                host=DB_HOST,
+                port=DB_PORT,
+                user=DB_USER,
+                password=DB_PASSWORD,
+                database=DB_NAME,
+            )
+        except Exception:
+            print("Database not ready, retrying in 2 seconds...")
+            time.sleep(2)
 
+
+def _try(cursor, sql: str):
+    try:
+        cursor.execute(sql)
+    except mysql.connector.Error:
+        pass
+
+
+def ensure_schema():
+    conn = get_db_connection()
     cursor = conn.cursor()
+
 
     # users table
     cursor.execute(
@@ -126,26 +118,16 @@ def _ensure_db_schema():
 
     conn.commit()
     conn.close()
-    _DB_SCHEMA_READY = True
 
-
-def get_db_connection():
-    """Get a DB connection for request handlers; returns 503 if DB is down."""
-    try:
-        _ensure_db_schema()
-        return _connect_db_once()
-    except Exception as e:
-        # Print full error to container logs for debugging, but return a clean message to client
-        print("DB connection/schema error:", repr(e))
-        raise HTTPException(status_code=503, detail="Database unavailable")
 
 def send_email_best_effort(to_email: str, subject: str, body: str) -> bool:
 
     host = os.getenv("SMTP_HOST")
-    port = int(os.getenv("SMTP_PORT", "587"))
+    port = (os.getenv("SMTP_PORT") or "587").strip()
     user = os.getenv("SMTP_USER")
     pwd = os.getenv("SMTP_PASS")
     from_addr = os.getenv("SMTP_FROM") or user
+    print("host is " + host + "port is " + port + "user is " + user + "from_addr is " + from_addr )
 
     if not host or not user or not pwd or not from_addr:
         # Demo-friendly fallback
@@ -343,22 +325,14 @@ def add_customer(name: str, registered_by: str):
     return {"customer_name": name}
 
 
-@app.get("/get-customers", response_class=HTMLResponse)
+@app.get("/get-customers")
 def get_customers():
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM customers")
-    result = cursor.fetchall()
+    cur = conn.cursor(dictionary=True)
+    cur.execute("SELECT id, full_name, registered_by FROM customers")
+    rows = cur.fetchall()
     conn.close()
-
-    html_content = "<html><body dir='rtl'><h1>רשימת לקוחות</h1><ul>"
-    for customer in result:
-        html_content += (
-            f"<li>לקוח: {customer['full_name']} | נרשם ע'י: {customer['registered_by']}</li>"
-        )
-    html_content += "</ul><a href='/'>חזרה</a></body></html>"
-
-    return html_content
+    return rows
 
 
 
