@@ -1,7 +1,7 @@
 Alon Marianchick 212345292
 nadav mazuz 208752071
 ido ben yishay 208837948
-
+Sean fainbrun 209364470
 
 https://github.com/vasapopkin123/Communication_LTD_Project/
 
