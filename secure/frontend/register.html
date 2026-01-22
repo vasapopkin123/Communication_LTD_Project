@@ -1,16 +1,52 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
+
 <head>
     <meta charset="UTF-8">
     <title>Communication_LTD - הרשמה</title>
     <style>
-        body { font-family: Arial; background: #2c3e50; color: white; display: flex; justify-content: center; padding-top: 50px; }
-        .card { background: #34495e; padding: 20px; border-radius: 10px; width: 350px; }
-        input { width: 90%; padding: 10px; margin: 10px 0; border-radius: 5px; border: none; }
-        button { width: 100%; padding: 10px; background: #27ae60; color: white; border: none; border-radius: 5px; cursor: pointer; }
-        #status { margin-top: 15px; color: #e74c3c; font-size: 0.9em; }
+        body {
+            font-family: Arial;
+            background: #2c3e50;
+            color: white;
+            display: flex;
+            justify-content: center;
+            padding-top: 50px;
+        }
+        
+        .card {
+            background: #34495e;
+            padding: 20px;
+            border-radius: 10px;
+            width: 350px;
+        }
+        
+        input {
+            width: 90%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: none;
+        }
+        
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        #status {
+            margin-top: 15px;
+            color: #e74c3c;
+            font-size: 0.9em;
+        }
     </style>
 </head>
+
 <body>
     <div class="card">
         <h2>רישום משתמש חדש</h2>
@@ -18,6 +54,9 @@
         <input type="email" id="email" placeholder="אימייל">
         <input type="password" id="pass" placeholder="סיסמה (לפחות 10 תווים + תו מיוחד)">
         <button onclick="register()">בצע הרשמה</button>
+
+        <button class="back-btn" onclick="window.location.href='index.html'">חזרה למסך התחברות</button>
+
         <div id="status"></div>
     </div>
 
@@ -26,7 +65,9 @@
             const status = document.getElementById('status');
             const response = await fetch('http://localhost:5000/register', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: {
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify({
                     username: document.getElementById('user').value,
                     email: document.getElementById('email').value,
@@ -43,4 +84,5 @@
         }
     </script>
 </body>
+
 </html>
